@@ -168,3 +168,8 @@ export const parser: <A>(f: (l: List<string>) => ParseResult<A>) => Parser<A> =
     return local
   }
 
+export const failedParser: <A>(f: Fail) => Parser<A> =
+  <A>(fail: Fail) => parser<A>(c => fail)
+
+export const doneParser: <A>(d: Done<A>) => Parser<A> =
+  <A>(done: Done<A>) => parser<A>(c => done)

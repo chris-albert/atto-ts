@@ -37,6 +37,19 @@ test('char parser should fail', () => {
     .toEqual(fail(List.of('f', 'd', 's', 'a'), 'not [a]'))
 })
 
+test('string parser should work', () => {
+  expect(P.string('asdf').parse("asdffdsa"))
+    .toEqual(done('asdf', 'fdsa'))
+
+  expect(P.string('asdf').parse("asdf"))
+    .toEqual(done('asdf', ''))
+})
+
+test('string parser should fail', () => {
+  expect(P.string('asdf').parse("fdsa"))
+    .toEqual(fail(List.of('f', 'd', 's', 'a'), 'not [asdf]'))
+})
+
 test('regex parser should work', () => {
   expect(P.regex(/[ad]/).parse("ac"))
     .toEqual(done('a', 'c'))
@@ -56,6 +69,20 @@ test('number parser should work', () => {
 
   expect(P.number.parse("-123abc"))
     .toEqual(done(-123, 'abc'))
+})
+
+test('numberWithDecimal parser should work', () => {
+  expect(P.numberWithDecimal.parse("123"))
+    .toEqual(done(123, ''))
+
+  expect(P.numberWithDecimal.parse("123abc"))
+    .toEqual(done(123, 'abc'))
+
+  expect(P.numberWithDecimal.parse("-123abc"))
+    .toEqual(done(-123, 'abc'))
+
+  expect(P.numberWithDecimal.parse("1.23abc"))
+    .toEqual(done(1.23, 'abc'))
 })
 
 test('number parser should fail', () => {

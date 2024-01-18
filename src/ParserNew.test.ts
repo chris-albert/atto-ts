@@ -295,3 +295,25 @@ test("fixedNumber should work", () => {
     Done.of(123, ParseIndex.of("12345abc", 3))
   )
 })
+
+/**
+ * string number
+ */
+
+test("string should work", () => {
+  expect(
+    Parser.string("asdf")
+      .parse("asdf123")
+  ).toEqual(
+    Done.of("asdf", ParseIndex.of("asdf123", 4))
+  )
+})
+
+test("string should fail", () => {
+  expect(
+    Parser.string("asdf")
+      .parse("asd123")
+  ).toEqual(
+    Fail.of("Expected [asdf]", ParseIndex.of("asd123", 3))
+  )
+})

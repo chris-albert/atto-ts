@@ -19,7 +19,7 @@
   },
   "scripts": {
     "test": "jest src --watch",
-    "test-only": "jest --watch ParserNew.test.ts"
+    "test-only": "jest --watch JsonParser.test.ts"
   },
   "author": "chris-albert",
   "license": "ISC",

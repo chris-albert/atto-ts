@@ -230,6 +230,14 @@ export class Parser<A> {
     })
   }
 
+  static done<A>(a: A): Parser<A> {
+    return new Parser<A>(index => Done.of(a, index))
+  }
+
+  static fail <A>(message: string): Parser<A> {
+    return new Parser<A>(index => Fail.of(message, index))
+  }
+
   static any(): Parser<string> {
     return new Parser<string>(index => {
       const v = index.focus()
@@ -245,6 +253,20 @@ export class Parser<A> {
     return Parser.any()
       .filter(a => a === s)
       .withFailMessage(`Expected [${s}]`)
+  }
+
+  static string(compareString: string): Parser<string> {
+    if(compareString === '') {
+      return this.done('')
+    } else {
+      let parser = this.char(compareString[0])
+      for (let i = 1; i < compareString.length; i++) {
+        const char = compareString[i]
+        parser = parser.flatMap(c => this.char(char).map(cc => c + cc))
+      }
+      return parser
+        .withFailMessage(`Expected [${compareString}]`)
+    }
   }
 
   static regex(regex: RegExp): Parser<string> {

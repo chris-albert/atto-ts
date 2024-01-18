@@ -18,7 +18,8 @@
     "typescript": "^4.3.2"
   },
   "scripts": {
-    "test": "jest src --watch"
+    "test": "jest src --watch",
+    "test-only": "jest --watch ParserNew.test.ts"
   },
   "author": "chris-albert",
   "license": "ISC",

@@ -120,3 +120,178 @@ test("digit should fail", () => {
     Fail.of("Expected a digit", ParseIndex.of("abc", 0))
   )
 })
+
+/**
+ * digits
+ */
+
+test("digits should work, with 1 number", () => {
+  expect(
+    Parser.digits()
+      .parse("1bc")
+  ).toEqual(
+    Done.of(1, ParseIndex.of("1bc", 1))
+  )
+})
+
+test("digits should work, with 3 number", () => {
+  expect(
+    Parser.digits()
+      .parse("123bc")
+  ).toEqual(
+    Done.of(123, ParseIndex.of("123bc", 3))
+  )
+})
+
+/**
+ * until
+ */
+
+test("until should work", () => {
+  expect(
+    Parser.any()
+      .until(s => s === "c")
+      .parse("1bc")
+  ).toEqual(
+    Done.of(Array("1", "b"), ParseIndex.of("1bc", 2))
+  )
+})
+
+test("until should work, if hit on first element", () => {
+  expect(
+    Parser.any()
+      .until(s => s === "1")
+      .parse("1bc")
+  ).toEqual(
+    Done.of(Array(), ParseIndex.of("1bc", 0))
+  )
+})
+
+/**
+ * zip
+ */
+
+test("zip should work", () => {
+  expect(
+    Parser.letter()
+      .zip(Parser.digit())
+      .parse("b1c")
+  ).toEqual(
+    Done.of(["b", 1], ParseIndex.of("b1c", 2))
+  )
+})
+
+test("zip right should work", () => {
+  expect(
+    Parser.letter()
+      .zipRight(Parser.digit())
+      .parse("b1c")
+  ).toEqual(
+    Done.of(1, ParseIndex.of("b1c", 2))
+  )
+})
+
+test("zip left should work", () => {
+  expect(
+    Parser.letter()
+      .zipLeft(Parser.digit())
+      .parse("b1c")
+  ).toEqual(
+    Done.of("b", ParseIndex.of("b1c", 2))
+  )
+})
+
+/**
+ * many
+ */
+
+test("many should work", () => {
+  expect(
+    Parser.letter()
+      .many(3)
+      .parse("abcdefg")
+  ).toEqual(
+    Done.of(["a", "b", "c"], ParseIndex.of("abcdefg", 3))
+  )
+})
+
+/**
+ * or
+ */
+
+test("or should work for first parser", () => {
+  expect(
+    Parser.letter()
+      .or(Parser.digit())
+      .parse("abcdefg")
+  ).toEqual(
+    Done.of("a", ParseIndex.of("abcdefg", 1))
+  )
+})
+
+test("or should work for second parser", () => {
+  expect(
+    Parser.letter()
+      .or(Parser.digit())
+      .parse("1bcdefg")
+  ).toEqual(
+    Done.of(1, ParseIndex.of("1bcdefg", 1))
+  )
+})
+
+/**
+ * int
+ */
+
+test("int should work", () => {
+  expect(
+    Parser.int()
+      .parse("101abc")
+  ).toEqual(
+    Done.of(101, ParseIndex.of("101abc", 3))
+  )
+})
+
+test("int should work, with negative number", () => {
+  expect(
+    Parser.int()
+      .parse("-101abc")
+  ).toEqual(
+    Done.of(-101, ParseIndex.of("-101abc", 4))
+  )
+})
+
+/**
+ * float
+ */
+
+test("float should work", () => {
+  expect(
+    Parser.float()
+      .parse("101.12abc")
+  ).toEqual(
+    Done.of(101.12, ParseIndex.of("101.12abc", 6))
+  )
+})
+
+test("float should work, with negative number", () => {
+  expect(
+    Parser.float()
+      .parse("-101.1abc")
+  ).toEqual(
+    Done.of(-101.1, ParseIndex.of("-101.1abc", 6))
+  )
+})
+
+/**
+ * fixed number
+ */
+
+test("fixedNumber should work", () => {
+  expect(
+    Parser.fixedNumber(3)
+      .parse("12345abc")
+  ).toEqual(
+    Done.of(123, ParseIndex.of("12345abc", 3))
+  )
+})

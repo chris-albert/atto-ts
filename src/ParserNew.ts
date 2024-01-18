@@ -21,7 +21,7 @@ export class ParseIndex {
     return new ParseIndex(this.value, this.index + 1)
   }
 
-  prev(): ParseIndex | undefined {
+  prev(): ParseIndex {
     return new ParseIndex(this.value, this.index - 1)
   }
 
@@ -100,7 +100,7 @@ export class Parser<A> {
       const n = this.parseFunc(index)
       if(n.isDone()) {
         if(predicate(n.value)) {
-          return Done.of(n.value, index.next())
+          return Done.of(n.value, n.index)
         } else {
           return Fail.of("Filter failed", index)
         }
@@ -114,7 +114,7 @@ export class Parser<A> {
     return new Parser<B>(index => {
       const result = this.parseFunc(index)
       if(result.isDone()) {
-        return Done.of<B>(f(result.value), index.next())
+        return Done.of<B>(f(result.value), result.index)
       } else {
         return result as Fail
       }
@@ -125,14 +125,14 @@ export class Parser<A> {
     return new Parser<B>(index => {
       const result = this.parseFunc(index)
       if(result.isDone()) {
-        return f(result.value).parseFunc(index.next())
+        return f(result.value).parseFunc(result.index)
       } else {
         return result as Fail
       }
     })
   }
 
-  than<B>(f: (a: A) => Parser<B>): Parser<B> {
+  then<B>(f: (a: A) => Parser<B>): Parser<B> {
     return this.flatMap(f)
   }
 
@@ -149,6 +149,85 @@ export class Parser<A> {
 
   withFailMessage(message: string): Parser<A> {
     return this.mapFail(f => Fail.of(message, f.index))
+  }
+
+  zip<B>(bParser: Parser<B>): Parser<[A, B]> {
+    return this.flatMap(a => bParser.map(b => [a, b]))
+  }
+
+  zipRight<B>(bParser: Parser<B>): Parser<B> {
+    return this.zip(bParser).map(a => a[1])
+  }
+
+  zipLeft<B>(bParser: Parser<B>): Parser<A> {
+    return this.zip(bParser).map(a => a[0])
+  }
+
+  many(count: number): Parser<Array<A>> {
+    return new Parser<Array<A>>(index => {
+      const accu: Array<A> = []
+      const loop = (innerIndex: ParseIndex, currentCount: number): ParseResult<Array<A>> => {
+        const result = this.parseFunc(innerIndex)
+        if(result.isDone()) {
+          if(currentCount > count - 1) {
+            return Done.of(accu, innerIndex)
+          } else {
+            accu.push(result.value)
+            return loop(innerIndex.next(), currentCount + 1)
+          }
+        } else {
+          return result as Fail
+        }
+      }
+      return loop(index, 0)
+    })
+  }
+
+  until(predicate: (a: A) => boolean) {
+    return new Parser<Array<A>>(index => {
+      const accu: Array<A> = []
+      const loop = (innerIndex: ParseIndex): ParseResult<Array<A>> => {
+        const result = this.parseFunc(innerIndex)
+        if(result.isDone()) {
+          if(predicate(result.value)) {
+            return Done.of(accu, innerIndex)
+          } else {
+            accu.push(result.value)
+            return loop(innerIndex.next())
+          }
+        } else {
+          return result as Fail
+        }
+      }
+      return loop(index)
+    })
+  }
+
+  untilFail(): Parser<Array<A>> {
+    return new Parser<Array<A>>(index => {
+      const accu: Array<A> = []
+      const loop = (innerIndex: ParseIndex): ParseIndex => {
+        const result = this.parseFunc(innerIndex)
+        if(result.isDone()) {
+          accu.push(result.value)
+          return loop(innerIndex.next())
+        } else {
+          return innerIndex
+        }
+      }
+      return Done.of(accu, loop(index))
+    })
+  }
+
+  or<B>(other: Parser<B>): Parser<A | B> {
+    return new Parser<A | B>(index => {
+      const result = this.parseFunc(index)
+      if(result.isDone()) {
+        return result
+      } else {
+        return other.parseFunc(index)
+      }
+    })
   }
 
   static any(): Parser<string> {
@@ -182,6 +261,34 @@ export class Parser<A> {
     return Parser.regex(/[0-9]/)
       .map(n => Number.parseInt(n))
       .withFailMessage("Expected a digit")
+  }
+
+  static digits(): Parser<number> {
+    return Parser.digit()
+      .untilFail()
+      .map(na => Number.parseInt(na.join('')))
+      .withFailMessage("Expected digits")
+  }
+
+  static int(): Parser<number> {
+    return this.char('-')
+      .flatMap(n => this.digits().map(n => -n))
+      .or(this.digits())
+      .withFailMessage("Not a number")
+  }
+
+  static float(): Parser<number> {
+    return this.int()
+      .zipLeft(this.char('.'))
+      .flatMap(s => this.digits().map(d => Number.parseFloat(`${s}.${d}`)))
+      .withFailMessage("Not a float")
+  }
+
+  static fixedNumber(size: number): Parser<number> {
+    return this.digit()
+      .many(size)
+      .map(an => Number.parseInt(an.join('')))
+      .withFailMessage(`Not fixed number size [${size}]`)
   }
 
   parse(s: string): ParseResult<A> {

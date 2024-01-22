@@ -37,6 +37,7 @@ export class ParseIndex {
 export interface ParseResult<A> {
   isDone(): this is Done<A> 
   isFail(): this is Fail
+  fold<B>(done: (d: Done<A>) => B, fail: (f: Fail) => B): B
 }
 
 export class Done<A> implements ParseResult<A>{
@@ -60,6 +61,10 @@ export class Done<A> implements ParseResult<A>{
   isFail(): this is Fail {
     return false;
   }
+
+  fold<B>(done: (d: Done<A>) => B, fail: (f: Fail) => B): B {
+    return done(this)
+  }
 }
 
 export class Fail implements ParseResult<never>{
@@ -82,6 +87,9 @@ export class Fail implements ParseResult<never>{
 
   isFail(): this is Fail {
     return true;
+  }
+  fold<B>(done: (d: Done<never>) => B, fail: (f: Fail) => B): B {
+    return fail(this)
   }
 }
 
@@ -108,6 +116,10 @@ export class Parser<A> {
         return n
       }
     })
+  }
+
+  asVoid(): Parser<void> {
+    return this.map(() => {})
   }
 
   map<B>(f: (a: A) => B): Parser<B> {
@@ -183,7 +195,7 @@ export class Parser<A> {
     })
   }
 
-  until(predicate: (a: A) => boolean) {
+  until(predicate: (a: A) => boolean): Parser<Array<A>> {
     return new Parser<Array<A>>(index => {
       const accu: Array<A> = []
       const loop = (innerIndex: ParseIndex): ParseResult<Array<A>> => {
@@ -217,6 +229,18 @@ export class Parser<A> {
       }
       return Done.of(accu, loop(index))
     })
+  }
+
+  untilEq(char: A): Parser<Array<A>> {
+    return this.until(a => a === char)
+  }
+
+  as<B>(b: B): Parser<B> {
+    return this.map(() => b)
+  }
+
+  skip(): Parser<A> {
+    return this.zipLeft(Parser.any())
   }
 
   or<B>(other: Parser<B>): Parser<A | B> {
@@ -288,13 +312,20 @@ export class Parser<A> {
   static digits(): Parser<number> {
     return Parser.digit()
       .untilFail()
-      .map(na => Number.parseInt(na.join('')))
+      .flatMap(na => {
+        const n = Number.parseInt(na.join(''))
+        if(!isNaN(n)) {
+          return Parser.done(n)
+        } else {
+          return Parser.fail<number>(``)
+        }
+      })
       .withFailMessage("Expected digits")
   }
 
   static int(): Parser<number> {
     return this.char('-')
-      .flatMap(n => this.digits().map(n => -n))
+      .zipRight(this.digits().map(n => -n))
       .or(this.digits())
       .withFailMessage("Not a number")
   }
